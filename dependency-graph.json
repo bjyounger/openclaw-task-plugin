@@ -1,0 +1,423 @@
+{
+  "timestamp": "2026-04-17T02:37:03.160413+00:00",
+  "root": "/home/younger/.openclaw/workspace/projects/task-plugin-v3",
+  "files": {
+    "jest.config.js": {
+      "language": "javascript",
+      "imports": [
+        "ts-jest"
+      ],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 37
+    },
+    "tests/unit/session-task-manager.test.ts": {
+      "language": "typescript",
+      "imports": [
+        "vitest",
+        "src/core/managers/session-task-manager.ts",
+        "src/core/bridge.ts",
+        "src/core/managers/types.ts",
+        "src/core/managers/types.ts"
+      ],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 513
+    },
+    "src/index.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/bridge.ts"
+      ],
+      "importedBy": [
+        "examples/taskflow-examples.ts",
+        "examples/advanced-examples.ts",
+        "examples/basic-usage.ts"
+      ],
+      "exports": [
+        "VERSION",
+        "OPENCLAW_MIN_VERSION",
+        "checkOpenClawVersion",
+        "createBridge",
+        "OpenClawBridge",
+        "OpenClawBridgeConfig",
+        "SessionTaskManager",
+        "SessionTaskManagerConfig",
+        "TaskCreateOptions",
+        "SubTaskCreateParams",
+        "TaskQueryFilter",
+        "HealthCheckResult",
+        "HealthIssue",
+        "TaskManagerStats",
+        "TaskManagerEvents",
+        "TaskMemory",
+        "SubTaskMemory",
+        "ErrorCode",
+        "SessionTaskManagerError",
+        "isTaskStatus",
+        "isTaskRuntime"
+      ],
+      "lineCount": 78
+    },
+    "src/core/bridge.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/types.ts"
+      ],
+      "importedBy": [
+        "test/unit/bridge.test.ts",
+        "src/core/managers/types.ts",
+        "src/core/managers/session-task-manager.ts",
+        "test/integration/core-integration.test.ts",
+        "src/index.ts",
+        "tests/unit/session-task-manager.test.ts"
+      ],
+      "exports": [
+        "interface",
+        "OpenClawBridge"
+      ],
+      "lineCount": 373
+    },
+    "src/core/types.ts": {
+      "language": "typescript",
+      "imports": [],
+      "importedBy": [
+        "src/core/bridge.ts",
+        "test/unit/bridge.test.ts",
+        "src/core/managers/types.ts",
+        "src/core/managers/session-task-manager.ts",
+        "test/integration/core-integration.test.ts"
+      ],
+      "exports": [
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "type",
+        "type",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "type",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "type",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "TaskOperationError",
+        "EnhancedTaskError"
+      ],
+      "lineCount": 373
+    },
+    "src/core/managers/index.ts": {
+      "language": "typescript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [
+        "SessionTaskManager",
+        "EventEmitter"
+      ],
+      "lineCount": 12
+    },
+    "src/core/managers/session-task-manager.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/types.ts",
+        "src/core/bridge.ts",
+        "src/core/managers/types.ts",
+        "src/core/managers/event-emitter.ts"
+      ],
+      "importedBy": [
+        "test/integration/core-integration.test.ts",
+        "tests/unit/session-task-manager.test.ts"
+      ],
+      "exports": [
+        "SessionTaskManager"
+      ],
+      "lineCount": 846
+    },
+    "src/core/managers/types.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/types.ts",
+        "src/core/bridge.ts"
+      ],
+      "importedBy": [
+        "tests/unit/session-task-manager.test.ts",
+        "src/core/managers/session-task-manager.ts"
+      ],
+      "exports": [
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "type",
+        "SessionTaskManagerError",
+        "isTaskStatus",
+        "isTaskRuntime",
+        "isValidTaskQueryFilter"
+      ],
+      "lineCount": 518
+    },
+    "src/core/managers/event-emitter.ts": {
+      "language": "typescript",
+      "imports": [],
+      "importedBy": [
+        "src/core/events/event-manager.ts",
+        "src/core/managers/session-task-manager.ts"
+      ],
+      "exports": [
+        "EventEmitter"
+      ],
+      "lineCount": 103
+    },
+    "src/core/events/event-types.ts": {
+      "language": "typescript",
+      "imports": [],
+      "importedBy": [
+        "src/core/events/event-manager.ts",
+        "test/unit/events/event-manager.test.ts"
+      ],
+      "exports": [
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "interface",
+        "EventTypes",
+        "type"
+      ],
+      "lineCount": 321
+    },
+    "src/core/events/index.ts": {
+      "language": "typescript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [
+        "type",
+        "EventManager",
+        "TaskCreatedEvent",
+        "TaskStartedEvent",
+        "TaskCompletedEvent",
+        "TaskFailedEvent",
+        "TaskCancelledEvent",
+        "SubTaskCreatedEvent",
+        "SubTaskCompletedEvent",
+        "HealthCheckEvent",
+        "HealthIssueEvent",
+        "OperationErrorEvent",
+        "TimeoutErrorEvent",
+        "FailureAnalysis",
+        "HealthCheckResult",
+        "HealthIssue",
+        "TaskRunView",
+        "TaskManagerEvents",
+        "TaskManagerEventData",
+        "EventType",
+        "EventTypes"
+      ],
+      "lineCount": 34
+    },
+    "src/core/events/event-manager.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/managers/event-emitter.ts",
+        "src/core/events/event-types.ts"
+      ],
+      "importedBy": [
+        "test/integration/core-integration.test.ts",
+        "test/unit/events/event-manager.test.ts"
+      ],
+      "exports": [
+        "interface",
+        "interface",
+        "EventManager"
+      ],
+      "lineCount": 444
+    },
+    "examples/advanced-examples.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/index.ts"
+      ],
+      "importedBy": [],
+      "exports": [
+        "async",
+        "async",
+        "TaskPoller",
+        "CachedTaskQuery",
+        "SecureTaskManager",
+        "ProductionTaskProcessor",
+        "async",
+        "advancedExamples"
+      ],
+      "lineCount": 599
+    },
+    "examples/taskflow-examples.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/index.ts"
+      ],
+      "importedBy": [],
+      "exports": [
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "taskFlowExamples"
+      ],
+      "lineCount": 402
+    },
+    "examples/basic-usage.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/index.ts"
+      ],
+      "importedBy": [],
+      "exports": [
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "async",
+        "basicExamples"
+      ],
+      "lineCount": 258
+    },
+    "test/integration/core-integration.test.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/managers/session-task-manager.ts",
+        "src/core/bridge.ts",
+        "src/core/events/event-manager.ts",
+        "src/core/types.ts"
+      ],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 939
+    },
+    "test/unit/bridge.test.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/bridge.ts",
+        "src/core/types.ts"
+      ],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 934
+    },
+    "test/unit/events/event-manager.test.ts": {
+      "language": "typescript",
+      "imports": [
+        "src/core/events/event-manager.ts",
+        "src/core/events/event-types.ts"
+      ],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 619
+    },
+    "coverage/block-navigation.js": {
+      "language": "javascript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 88
+    },
+    "coverage/sorter.js": {
+      "language": "javascript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 211
+    },
+    "coverage/prettify.js": {
+      "language": "javascript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 3
+    },
+    "coverage/lcov-report/block-navigation.js": {
+      "language": "javascript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 88
+    },
+    "coverage/lcov-report/sorter.js": {
+      "language": "javascript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 211
+    },
+    "coverage/lcov-report/prettify.js": {
+      "language": "javascript",
+      "imports": [],
+      "importedBy": [],
+      "exports": [],
+      "lineCount": 3
+    }
+  },
+  "stats": {
+    "totalFiles": 24,
+    "totalImports": 27,
+    "orphanFiles": 8,
+    "filesByLanguage": {
+      "javascript": 7,
+      "typescript": 17
+    }
+  }
+}
