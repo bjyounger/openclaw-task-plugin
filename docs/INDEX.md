@@ -1,7 +1,7 @@
 # 📚 文档索引
 
 **项目**: OpenClaw Task Plugin v3.0  
-**最后更新**: 2026-04-16 23:41 UTC  
+**最后更新**: 2026-04-19 00:58 UTC  
 **维护者**: 孬蛋 (项目经理)
 
 ---
@@ -12,7 +12,11 @@
 - **[README.md](../README.md)** - 项目概述和快速开始
 - **[PROJECT.md](../PROJECT.md)** - 详细项目计划和执行策略
 
+### **设计文档**
+- **[docs/design/memory-manager-design.md](design/memory-manager-design.md)** - MemoryManager 详细设计方案 (Day 6)
+
 ### **架构文档**
+- **[docs/architecture/session-task-manager-design.md](architecture/session-task-manager-design.md)** - SessionTaskManager 接口设计
 - **[docs/architecture/design.md](architecture/design.md)** - 架构设计文档
 - **[docs/architecture/api-bridge.md](architecture/api-bridge.md)** - API桥接设计
 - **[docs/architecture/memory-system.md](architecture/memory-system.md)** - 记忆系统设计
