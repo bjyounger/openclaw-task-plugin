@@ -74,6 +74,26 @@ export interface TaskCreateOptions {
   
   /** 优先级 */
   priority?: 'high' | 'normal' | 'low';
+
+  // ==================== 依赖配置 ====================
+
+  /** 前置依赖任务 ID 列表 */
+  dependsOn?: string[];
+
+  /** 依赖类型：硬依赖（必须满足）/ 软依赖（可选） */
+  dependencyType?: 'hard' | 'soft';
+
+  /** 依赖满足条件：全部满足 / 任一满足 */
+  dependencyCondition?: 'all' | 'any';
+
+  /** 依赖超时时间（毫秒），0 表示不超时 */
+  dependencyTimeout?: number;
+
+  /** 依赖失败策略 */
+  dependencyOnFailure?: 'block' | 'skip' | 'fallback';
+
+  /** fallback 策略的备用任务 ID */
+  fallbackTaskId?: string;
 }
 
 /**
@@ -426,7 +446,12 @@ export type ErrorCode =
   | 'PARENT_FLOW_NOT_FOUND'
   | 'TASK_CREATION_FAILED'
   | 'CANCEL_FAILED'
-  | 'INVALID_PARAMS';
+  | 'INVALID_PARAMS'
+  | 'WORKFLOW_NOT_INITIALIZED'
+  | 'WORKFLOW_EXECUTION_FAILED'
+  | 'DEPENDENCY_NOT_INITIALIZED'
+  | 'DEPENDENCY_CYCLE_DETECTED'
+  | 'DEPENDENCY_REGISTER_FAILED';
 
 /**
  * SessionTaskManager 错误
@@ -456,6 +481,11 @@ export class SessionTaskManagerError extends TaskOperationError {
       TASK_CREATION_FAILED: '任务创建失败',
       CANCEL_FAILED: '任务取消失败',
       INVALID_PARAMS: '参数无效',
+      WORKFLOW_NOT_INITIALIZED: '工作流引擎未初始化',
+      WORKFLOW_EXECUTION_FAILED: '工作流执行失败',
+      DEPENDENCY_NOT_INITIALIZED: '依赖管理器未初始化',
+      DEPENDENCY_CYCLE_DETECTED: '检测到循环依赖',
+      DEPENDENCY_REGISTER_FAILED: '依赖注册失败',
     };
     
     return messages[this.code as ErrorCode] || this.message;

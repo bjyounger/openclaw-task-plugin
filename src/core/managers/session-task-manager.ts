@@ -45,6 +45,28 @@ import {
   isTaskRuntime,
 } from './types';
 import { EventEmitter } from './event-emitter';
+import {
+  WorkflowDefinition,
+  WorkflowResult,
+  WorkflowExecutor,
+  NodeRegistry,
+  getNodeRegistry,
+  TopologicalSorter,
+  ExecutionContext,
+  WorkflowIntegration,
+  WorkflowExecutionContext,
+  WorkflowExecutionResult,
+  IMemoryManager,
+  IEventManager,
+} from '../workflow';
+import {
+  DependencyManager,
+  DependencyEventListener,
+  DependencyState,
+  DependencyGraph,
+  TaskDependency,
+  DependencyEvents,
+} from '../dependency-manager';
 
 /**
  * SessionTaskManager 实现
@@ -78,6 +100,15 @@ export class SessionTaskManager {
   
   // 活跃任务追踪
   private activeFlows: Map<string, TaskFlow> = new Map();
+  
+  // 工作流集成
+  private workflowIntegration?: WorkflowIntegration;
+  private workflowExecutor?: WorkflowExecutor;
+
+  // 依赖管理
+  private dependencyManager?: DependencyManager;
+  private dependencyEventListener?: DependencyEventListener;
+  private dependencyReadyHandler?: () => void;
   
   // 状态
   private initialized: boolean = false;
@@ -160,22 +191,35 @@ export class SessionTaskManager {
     // 1. 停止健康检查
     this.stopHealthCheck();
     
-    // 2. 清理记忆
+    // 2. 清理依赖管理器
+    if (this.dependencyEventListener) {
+      this.dependencyEventListener.destroy();
+      this.dependencyEventListener = undefined;
+    }
+    if (this.dependencyManager) {
+      await this.dependencyManager.destroy();
+      this.dependencyManager = undefined;
+    }
+    if (this.dependencyReadyHandler) {
+      this.dependencyReadyHandler = undefined;
+    }
+
+    // 3. 清理记忆
     this.memories.clear();
     
-    // 3. 清理活跃任务追踪
+    // 4. 清理活跃任务追踪
     this.activeFlows.clear();
     
-    // 4. 标记为已销毁
+    // 5. 标记为已销毁
     this.destroyed = true;
     
-    // 5. 触发销毁事件（在清空监听器之前）
+    // 6. 触发销毁事件（在清空监听器之前）
     this.emit('manager:destroyed', {
       sessionKey: this.sessionKey,
       timestamp: Date.now(),
     });
     
-    // 6. 清空事件监听器
+    // 7. 清空事件监听器
     this.eventEmitter.clearAll();
   }
   
@@ -242,7 +286,12 @@ export class SessionTaskManager {
         metadata: options?.metadata,
       };
       this.emit('task:created', event);
-      
+
+      // 5. 注册依赖（如果配置了依赖）
+      if (options?.dependsOn && options.dependsOn.length > 0) {
+        await this.registerTaskDependency(flow.flowId, options);
+      }
+
       return flow;
       
     } catch (error) {
@@ -539,6 +588,131 @@ export class SessionTaskManager {
         { flowId, error, originalError: err }
       );
     }
+  }
+  
+  // ==================== 工作流管理 ====================
+  
+  /**
+   * 初始化工作流引擎
+   * 
+   * @param memoryManager 记忆管理器（可选）
+   * @param eventManager 事件管理器（可选）
+   */
+  initializeWorkflowEngine(
+    memoryManager?: IMemoryManager,
+    eventManager?: IEventManager
+  ): void {
+    this.ensureInitialized();
+    
+    // 使用全局注册表实例
+    const nodeRegistry = getNodeRegistry();
+    const topologicalSorter = new TopologicalSorter();
+    this.workflowExecutor = new WorkflowExecutor(nodeRegistry, topologicalSorter);
+    
+    this.workflowIntegration = new WorkflowIntegration(
+      this.workflowExecutor,
+      memoryManager,
+      eventManager as IEventManager | undefined,
+      {
+        enableMemory: !!memoryManager,
+        enableEvents: !!eventManager,
+      }
+    );
+  }
+  
+  /**
+   * 创建并执行工作流
+   * 
+   * @param definition 工作流定义
+   * @param options 工作流执行选项
+   * @returns 工作流执行结果
+   */
+  async createWorkflow(
+    definition: WorkflowDefinition,
+    options?: {
+      input?: Record<string, unknown>;
+      userId?: string;
+      sessionId?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<WorkflowExecutionResult> {
+    this.ensureInitialized();
+    
+    // 1. 检查工作流引擎是否已初始化
+    if (!this.workflowIntegration) {
+      throw new SessionTaskManagerError(
+        'WORKFLOW_NOT_INITIALIZED',
+        'Workflow engine not initialized, call initializeWorkflowEngine() first'
+      );
+    }
+    
+    // 2. 权限校验（如果 SecurityManager 可用）
+    // TODO: 集成 SecurityManager 后添加权限校验
+    
+    // 3. 创建执行上下文
+    const executionContext = new ExecutionContext({
+      executionId: `wf-exec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      workflowId: definition.id,
+      input: options?.input || {},
+      timeout: definition.settings?.timeout,
+    });
+    
+    // 4. 构建工作流执行上下文
+    const workflowContext: WorkflowExecutionContext = {
+      definition,
+      executionContext,
+      userId: options?.userId,
+      sessionId: options?.sessionId || this.sessionKey,
+      metadata: options?.metadata,
+    };
+    
+    try {
+      // 5. 调用 WorkflowIntegration.createAndExecute()
+      const result = await this.workflowIntegration.createAndExecute(
+        definition,
+        workflowContext
+      );
+      
+      // 6. 触发事件
+      this.emit('task:completed', {
+        flowId: definition.id,
+        goal: `工作流: ${definition.name}`,
+        duration: result.duration,
+        result,
+        timestamp: Date.now(),
+      });
+      
+      return result;
+      
+    } catch (error) {
+      // 触发失败事件
+      this.emit('task:failed', {
+        flowId: definition.id,
+        goal: `工作流: ${definition.name}`,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: Date.now(),
+      });
+      
+      throw new SessionTaskManagerError(
+        'WORKFLOW_EXECUTION_FAILED',
+        `Workflow execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        { definition, originalError: error }
+      );
+    }
+  }
+  
+  /**
+   * 获取工作流执行器
+   */
+  getWorkflowExecutor(): WorkflowExecutor | undefined {
+    return this.workflowExecutor;
+  }
+  
+  /**
+   * 获取工作流集成服务
+   */
+  getWorkflowIntegration(): WorkflowIntegration | undefined {
+    return this.workflowIntegration;
   }
   
   // ==================== 事件管理 ====================
@@ -842,5 +1016,259 @@ export class SessionTaskManager {
     }
     
     return filtered;
+  }
+
+  // ==================== 依赖管理 ====================
+
+  /**
+   * 初始化依赖管理器
+   *
+   * 创建 DependencyManager 和 DependencyEventListener 实例，
+   * 并注册 dependency:ready 事件监听器，用于自动触发就绪任务
+   *
+   * @param options 依赖管理器配置选项
+   */
+  initializeDependencyManager(options?: {
+    enableLogging?: boolean;
+    errorHandling?: 'throw' | 'log';
+  }): void {
+    this.ensureInitialized();
+
+    if (this.dependencyManager) {
+      throw new SessionTaskManagerError(
+        'ALREADY_INITIALIZED',
+        'DependencyManager already initialized'
+      );
+    }
+
+    // 1. 创建 DependencyManager 实例
+    this.dependencyManager = new DependencyManager();
+
+    // 2. 创建 DependencyEventListener 实例
+    this.dependencyEventListener = new DependencyEventListener(
+      this.eventEmitter,
+      this.dependencyManager,
+      {
+        autoStart: true,
+        enableLogging: options?.enableLogging ?? false,
+        errorHandling: options?.errorHandling ?? 'log',
+      }
+    );
+
+    // 3. 监听 dependency:ready 事件，触发任务执行
+    this.dependencyReadyHandler = this.dependencyManager.getEventEmitter().on(
+      'dependency:ready',
+      (event) => {
+        this.handleDependencyReady(event.taskId);
+      }
+    );
+  }
+
+  /**
+   * 获取依赖管理器实例
+   *
+   * @returns DependencyManager 实例，未初始化时返回 undefined
+   */
+  getDependencyManager(): DependencyManager | undefined {
+    return this.dependencyManager;
+  }
+
+  /**
+   * 获取任务的依赖状态
+   *
+   * @param taskId 任务 ID
+   * @returns 依赖状态，未注册依赖时返回 undefined
+   */
+  async getTaskDependencyState(taskId: string): Promise<DependencyState | undefined> {
+    this.ensureInitialized();
+
+    if (!this.dependencyManager) {
+      throw new SessionTaskManagerError(
+        'DEPENDENCY_NOT_INITIALIZED',
+        'DependencyManager not initialized, call initializeDependencyManager() first'
+      );
+    }
+
+    return this.dependencyManager.getDependencyState(taskId);
+  }
+
+  /**
+   * 获取所有被阻塞的任务
+   *
+   * @returns 被阻塞的任务 ID 列表
+   */
+  async getBlockedTasks(): Promise<string[]> {
+    this.ensureInitialized();
+
+    if (!this.dependencyManager) {
+      throw new SessionTaskManagerError(
+        'DEPENDENCY_NOT_INITIALIZED',
+        'DependencyManager not initialized, call initializeDependencyManager() first'
+      );
+    }
+
+    return this.dependencyManager.getBlockedTasks();
+  }
+
+  /**
+   * 获取依赖图
+   *
+   * @returns 依赖图结构
+   */
+  async getDependencyGraph(): Promise<DependencyGraph> {
+    this.ensureInitialized();
+
+    if (!this.dependencyManager) {
+      throw new SessionTaskManagerError(
+        'DEPENDENCY_NOT_INITIALIZED',
+        'DependencyManager not initialized, call initializeDependencyManager() first'
+      );
+    }
+
+    return this.dependencyManager.getDependencyGraph();
+  }
+
+  /**
+   * 动态添加依赖
+   *
+   * 在运行时为已存在的任务添加新的前置依赖
+   *
+   * @param taskId 任务 ID
+   * @param dependsOn 新增的前置依赖任务 ID
+   * @param options 依赖配置选项
+   */
+  async addDependency(
+    taskId: string,
+    dependsOn: string[],
+    options?: {
+      type?: 'hard' | 'soft';
+      condition?: 'all' | 'any';
+      timeout?: number;
+      onFailure?: 'block' | 'skip' | 'fallback';
+      fallbackTaskId?: string;
+    }
+  ): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.dependencyManager) {
+      throw new SessionTaskManagerError(
+        'DEPENDENCY_NOT_INITIALIZED',
+        'DependencyManager not initialized, call initializeDependencyManager() first'
+      );
+    }
+
+    const now = new Date().toISOString();
+    const dependency: TaskDependency = {
+      taskId,
+      dependsOn,
+      type: options?.type ?? 'hard',
+      condition: options?.condition ?? 'all',
+      timeout: options?.timeout ?? 0,
+      onFailure: options?.onFailure ?? 'block',
+      fallbackTaskId: options?.fallbackTaskId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      await this.dependencyManager.register(dependency);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'CycleDetectedError') {
+        throw new SessionTaskManagerError(
+          'DEPENDENCY_CYCLE_DETECTED',
+          error.message,
+          { taskId, dependsOn, originalError: error }
+        );
+      }
+      throw new SessionTaskManagerError(
+        'DEPENDENCY_REGISTER_FAILED',
+        `Failed to register dependency: ${error instanceof Error ? error.message : String(error)}`,
+        { taskId, dependsOn, originalError: error }
+      );
+    }
+  }
+
+  /**
+   * 动态移除依赖
+   *
+   * @param taskId 任务 ID
+   */
+  async removeDependency(taskId: string): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.dependencyManager) {
+      throw new SessionTaskManagerError(
+        'DEPENDENCY_NOT_INITIALIZED',
+        'DependencyManager not initialized, call initializeDependencyManager() first'
+      );
+    }
+
+    await this.dependencyManager.unregister(taskId);
+  }
+
+  // ==================== 依赖管理私有方法 ====================
+
+  /**
+   * 注册任务依赖
+   *
+   * 在 createMainTask 中调用，将任务选项中的依赖配置注册到 DependencyManager
+   *
+   * @param taskId 任务 ID
+   * @param options 任务创建选项（包含依赖配置）
+   */
+  private async registerTaskDependency(
+    taskId: string,
+    options: TaskCreateOptions
+  ): Promise<void> {
+    // 懒初始化依赖管理器
+    if (!this.dependencyManager) {
+      this.initializeDependencyManager();
+    }
+
+    const now = new Date().toISOString();
+    const dependency: TaskDependency = {
+      taskId,
+      dependsOn: options.dependsOn!,
+      type: options.dependencyType ?? 'hard',
+      condition: options.dependencyCondition ?? 'all',
+      timeout: options.dependencyTimeout ?? 0,
+      onFailure: options.dependencyOnFailure ?? 'block',
+      fallbackTaskId: options.fallbackTaskId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      await this.dependencyManager!.register(dependency);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'CycleDetectedError') {
+        throw new SessionTaskManagerError(
+          'DEPENDENCY_CYCLE_DETECTED',
+          error.message,
+          { taskId, dependsOn: options.dependsOn, originalError: error }
+        );
+      }
+      throw new SessionTaskManagerError(
+        'DEPENDENCY_REGISTER_FAILED',
+        `Failed to register dependency: ${error instanceof Error ? error.message : String(error)}`,
+        { taskId, dependsOn: options.dependsOn, originalError: error }
+      );
+    }
+  }
+
+  /**
+   * 处理依赖就绪事件
+   *
+   * 当 dependency:ready 事件触发时，自动执行就绪任务
+   *
+   * @param taskId 就绪的任务 ID
+   */
+  private async handleDependencyReady(taskId: string): Promise<void> {
+    // 触发 task:started 事件表示任务因依赖就绪而被触发
+    this.emit('task:started', {
+      taskId,
+      flowId: taskId,
+      timestamp: Date.now(),
+    });
   }
 }
